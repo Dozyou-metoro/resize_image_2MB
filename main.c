@@ -13,4 +13,96 @@
 #include<stdlib.h>
 #include<Windows.h>
 #include<pthread.h>
-#include<io.h>
+
+typedef struct {
+	int count;
+	int argc;
+	char* argv;
+}point_t;
+
+int* image_processing(void* point);
+
+int main(int argc, char* argv[]) {
+	pthread_t* handle;//ドラッグされなかった時の処理
+	point_t* p;//情報を渡すための構造体
+
+
+
+	//ドラッグされなかった時の処理
+	if (argc < 2) {
+		printf("ファイルをドラッグして起動してください\n");
+		Sleep(5000);
+		return 0;
+	}
+
+
+	handle = (pthread_t*)malloc((argc - 1) * sizeof(pthread_t));
+	p = (point_t*)malloc((argc - 1) * sizeof(point_t));
+
+	if (handle == NULL) {
+		return -1;
+	}
+	if (p == NULL) {
+		return -2;
+	}
+
+	for (int i = 1; i < argc; i++) {
+		p[i - 1].count = i;
+		p[i - 1].argc = argc;
+		p[i - 1].argv = argv[i];
+		pthread_create(&handle[i - 1], NULL, image_processing, &p[i - 1]);
+	}
+
+	for (int i = 1; i < argc; i++) {
+		pthread_join(handle[i - 1], NULL);
+		printf("進捗%4lf%%\n", (double)100 * (i) / (argc - 1));
+		fflush(stdout);
+	}
+	printf("完了\n");
+	Sleep(2000);
+
+}
+
+int* image_processing(void* point) {
+	point_t* data = (point_t*)point;
+
+	unsigned char* pixel = NULL;//画像データ格納
+	unsigned char* pixel_re = NULL;//画像データ格納
+	int width = 0, height = 0, bpp = 0;//ファイル読み込み用
+	int re_width = 1280, re_height = 720;
+	int idx = 0;
+
+	pixel = stbi_load(data->argv, &width, &height, &bpp, 4);
+
+	//NULL処理
+	if (pixel == NULL) {
+		printf("%d枚目の画像の読み込みに失敗しました。\n", data->count);
+		Sleep(5000);
+		return -1;
+	}
+	//処理後のデータを格納するメモリ
+	pixel_re = (unsigned char*)malloc((size_t)width * height * 4 * sizeof(unsigned char));
+
+	if (pixel_re == NULL) {
+		return -3;
+	}
+
+	/*ここからメイン処理*/
+	//画像処理
+	stbir_resize_uint8(pixel, width, height, 0, pixel_re, re_width, re_height, 0, 4);
+
+	/*ここまでメイン処理*/
+
+	//出力
+	stbi_write_png(data->argv, re_width, re_height, 4, pixel_re, 0);
+
+
+
+	//解放
+	stbi_image_free(pixel);
+	free(pixel_re);
+
+
+}
+
+
