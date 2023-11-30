@@ -106,7 +106,7 @@ int* image_processing(void* point) {
 	//ファイルサイズ確認
 	FILE* fp = NULL;
 	size_t image_size = 0;
-	while (1) {
+	while (1) {//ファイルサイズを取得
 		fp = fopen(data->argv, "r");
 		if (!fp) {
 			return -3;
@@ -115,7 +115,7 @@ int* image_processing(void* point) {
 
 		fclose(fp);
 
-		printf("%d枚目の画像の現在のサイズ%f\n", data->count,(double)image_size/(1024*1024));
+		printf("%d枚目の画像の現在のサイズ%fMB\n", data->count,(double)image_size/(1024*1024));
 
 		if (image_size < 1024 * 1024 * 2) {//2MBより小さいか判定
 			break;
