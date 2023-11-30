@@ -80,6 +80,8 @@ int* image_processing(void* point) {
 		printf("%d枚目の画像の読み込みに失敗しました。\n", data->count);
 		Sleep(5000);
 		return -1;
+	} else {
+		printf("%d枚目の画像を読み込みました。\n", data->count);
 	}
 	//処理後のデータを格納するメモリ
 	pixel_re = (unsigned char*)malloc((size_t)width * height * 4 * sizeof(unsigned char));
@@ -92,10 +94,14 @@ int* image_processing(void* point) {
 	//画像処理
 	stbir_resize_uint8(pixel, width, height, 0, pixel_re, re_width, re_height, 0, 4);
 
+	printf("%d枚目の画像を%dx%dにリサイズしました。\n", data->count,re_width,re_height);
+
 	/*ここまでメイン処理*/
 
 	//出力
 	stbi_write_png(data->argv, re_width, re_height, 4, pixel_re, 0);
+
+	printf("%d枚目の画像を%dx%dで書き出しました。\n", data->count, re_width, re_height);
 
 	//ファイルサイズ確認
 	FILE* fp = NULL;
@@ -107,6 +113,10 @@ int* image_processing(void* point) {
 		}
 		image_size = _filelengthi64(_fileno(fp));
 
+		fclose(fp);
+
+		printf("%d枚目の画像の現在のサイズ%f\n", data->count,(double)image_size/(1024*1024));
+
 		if (image_size < 1024 * 1024 * 2) {//2MBより小さいか判定
 			break;
 		}
@@ -116,9 +126,11 @@ int* image_processing(void* point) {
 
 		//リサイズやり直し
 		stbir_resize_uint8(pixel, width, height, 0, pixel_re, re_width, re_height, 0, 4);
+		printf("%d枚目の画像を%dx%dにリサイズしました。\n", data->count, re_width, re_height);
 
 		//出力してみる
 		stbi_write_png(data->argv, re_width, re_height, 4, pixel_re, 0);
+		printf("%d枚目の画像を%dx%dで書き出し直しました。\n", data->count, re_width, re_height);
 	}
 
 
