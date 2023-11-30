@@ -132,16 +132,9 @@ int* image_processing(void* point) {
 		stbi_write_png(data->argv, re_width, re_height, 4, pixel_re, 0);
 		printf("%d–‡–Ú‚Ì‰æ‘œ‚ð%dx%d‚Å‘‚«o‚µ’¼‚µ‚Ü‚µ‚½B\n", data->count, re_width, re_height);
 	}
-
-
-
 	//‰ð•ú
 	stbi_image_free(pixel);
 	free(pixel_re);
-
-
-
-
 }
 
 
