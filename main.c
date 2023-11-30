@@ -1,5 +1,3 @@
-//#define
-
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
 #define STB_IMAGE_STATIC
 #define STB_IMAGE_IMPLEMENTATION
@@ -8,17 +6,14 @@
 #define _CRT_SECURE_NO_WARNINGS
 #define HAVE_STRUCT_TIMESPEC
 
-//#include
-
 #include<stb_image_write.h>
 #include<stb_image.h>
 #include<stb_image_resize.h>
 #include<stdio.h>
 #include<stdlib.h>
 #include<Windows.h>
+#include<io.h>
 #include<pthread.h>
-
-//関数に渡す構造体
 
 typedef struct {
 	int count;
@@ -102,11 +97,37 @@ int* image_processing(void* point) {
 	//出力
 	stbi_write_png(data->argv, re_width, re_height, 4, pixel_re, 0);
 
+	//ファイルサイズ確認
+	FILE* fp = NULL;
+	size_t image_size = 0;
+	while (1) {
+		fp = fopen(data->argv, "r");
+		if (!fp) {
+			return -3;
+		}
+		image_size = _filelengthi64(_fileno(fp));
+
+		if (image_size < 1024 * 1024 * 2) {//2MBより小さいか判定
+			break;
+		}
+
+		re_width -= 16;//リサイズ先のサイズを変更
+		re_height -= 9;
+
+		//リサイズやり直し
+		stbir_resize_uint8(pixel, width, height, 0, pixel_re, re_width, re_height, 0, 4);
+
+		//出力してみる
+		stbi_write_png(data->argv, re_width, re_height, 4, pixel_re, 0);
+	}
+
 
 
 	//解放
 	stbi_image_free(pixel);
 	free(pixel_re);
+
+
 
 
 }
