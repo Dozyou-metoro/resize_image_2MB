@@ -59,7 +59,7 @@ int main(int argc, char* argv[]) {
 		printf("進捗%4lf%%\n", (double)100 * (i) / (argc - 1));
 		fflush(stdout);
 	}
-	printf("完了\n");
+	printf("完了しました。ご利用ありがとうございます。\n");
 	Sleep(2000);
 
 }
@@ -73,7 +73,7 @@ int* image_processing(void* point) {
 	int re_width = 1280, re_height = 720;
 	int idx = 0;
 
-	pixel = stbi_load(data->argv, &width, &height, &bpp, 4);
+	pixel = stbi_load(data->argv, &width, &height, &bpp, 3);
 
 	//NULL処理
 	if (pixel == NULL) {
@@ -92,14 +92,20 @@ int* image_processing(void* point) {
 
 	/*ここからメイン処理*/
 	//画像処理
-	stbir_resize_uint8(pixel, width, height, 0, pixel_re, re_width, re_height, 0, 4);
+	stbir_resize_uint8(pixel, width, height, 0, pixel_re, re_width, re_height, 0, 3);
 
 	printf("%d枚目の画像を%dx%dにリサイズしました。\n", data->count,re_width,re_height);
 
 	/*ここまでメイン処理*/
 
 	//出力
-	stbi_write_png(data->argv, re_width, re_height, 4, pixel_re, 0);
+	char filename_buf[1024];
+	strcpy(filename_buf, data->argv);
+	filename_buf[strlen(filename_buf) + 1 - 4];
+	sprintf(filename_buf, "%s_2MB.png", filename_buf);
+	
+
+	stbi_write_png(filename_buf, re_width, re_height, 3, pixel_re, 0);
 
 	printf("%d枚目の画像を%dx%dで書き出しました。\n", data->count, re_width, re_height);
 
@@ -115,7 +121,7 @@ int* image_processing(void* point) {
 
 		fclose(fp);
 
-		printf("%d枚目の画像の現在のサイズ%fMB\n", data->count,(double)image_size/(1024*1024));
+		printf("%d枚目の画像の現在のサイズ%3.2fMB\n", data->count,(double)image_size/(1024*1024));
 
 		if (image_size < 1024 * 1024 * 2) {//2MBより小さいか判定
 			break;
