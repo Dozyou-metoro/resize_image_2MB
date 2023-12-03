@@ -31,6 +31,7 @@ int main(int argc, char* argv[]) {
 
 	//ドラッグされなかった時の処理
 	if (argc < 2) {
+		printf("ver:0.3\n");
 		printf("ファイルをドラッグして起動してください\n");
 		Sleep(5000);
 		return 0;
@@ -84,7 +85,12 @@ int* image_processing(void* point) {
 		printf("%d枚目の画像を読み込みました。\n", data->count);
 	}
 	//処理後のデータを格納するメモリ
-	pixel_re = (unsigned char*)malloc((size_t)width * height * 4 * sizeof(unsigned char));
+	if ((size_t)width * height > 1280 * 720) {//画像が1280x720より小さいとオーバーランする対策
+		pixel_re = (unsigned char*)malloc((size_t)width * height * 3 * sizeof(unsigned char));
+	} else {
+		pixel_re = (unsigned char*)malloc((size_t)1280 * 720 * 3 * sizeof(unsigned char));
+	}
+
 
 	if (pixel_re == NULL) {
 		return -3;
@@ -94,7 +100,7 @@ int* image_processing(void* point) {
 	//画像処理
 	stbir_resize_uint8(pixel, width, height, 0, pixel_re, re_width, re_height, 0, 3);
 
-	printf("%d枚目の画像を%dx%dにリサイズしました。\n", data->count,re_width,re_height);
+	printf("%d枚目の画像を%dx%dにリサイズしました。\n", data->count, re_width, re_height);
 
 	/*ここまでメイン処理*/
 
@@ -103,7 +109,7 @@ int* image_processing(void* point) {
 	strcpy(filename_buf, data->argv);
 	filename_buf[strlen(filename_buf) + 1 - 4];
 	sprintf(filename_buf, "%s_2MB.png", filename_buf);
-	
+
 
 	stbi_write_png(filename_buf, re_width, re_height, 3, pixel_re, 0);
 
@@ -113,7 +119,7 @@ int* image_processing(void* point) {
 	FILE* fp = NULL;
 	size_t image_size = 0;
 	while (1) {//ファイルサイズを取得
-		fp = fopen(data->argv, "r");
+		fp = fopen(filename_buf, "r");
 		if (!fp) {
 			return -3;
 		}
@@ -121,7 +127,7 @@ int* image_processing(void* point) {
 
 		fclose(fp);
 
-		printf("%d枚目の画像の現在のサイズ%3.2fMB\n", data->count,(double)image_size/(1024*1024));
+		printf("%d枚目の画像の現在のサイズ%3.2fMB\n", data->count, (double)image_size / (1024 * 1024));
 
 		if (image_size < 1024 * 1024 * 2) {//2MBより小さいか判定
 			break;
@@ -131,11 +137,11 @@ int* image_processing(void* point) {
 		re_height -= 9;
 
 		//リサイズやり直し
-		stbir_resize_uint8(pixel, width, height, 0, pixel_re, re_width, re_height, 0, 4);
+		stbir_resize_uint8(pixel, width, height, 0, pixel_re, re_width, re_height, 0, 3);
 		printf("%d枚目の画像を%dx%dにリサイズしました。\n", data->count, re_width, re_height);
 
 		//出力してみる
-		stbi_write_png(data->argv, re_width, re_height, 4, pixel_re, 0);
+		stbi_write_png(filename_buf, re_width, re_height, 3, pixel_re, 0);
 		printf("%d枚目の画像を%dx%dで書き出し直しました。\n", data->count, re_width, re_height);
 	}
 	//解放
