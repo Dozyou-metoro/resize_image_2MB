@@ -153,6 +153,7 @@ int main(int argc, char** argv) {
 
 	//ドラッグされなかった時の処理
 	if (argc < 2) {
+		printf("ver:1.1\n");
 		printf("ファイルをドラッグして起動してください\n");
 		Sleep(5000);
 		return 0;
@@ -216,6 +217,7 @@ int main(int argc, char** argv) {
 				if (th_count_join < image_notch) {
 
 					printf("\033[1K\033[0Gファイルを出力して探索中。進捗%d%%。", (int)(th_count_join * 100) / image_notch);
+					fflush(stdout);
 
 					(*thread_list[th_j]).join();
 					th_count_join++;
@@ -228,12 +230,13 @@ int main(int argc, char** argv) {
 			}
 
 			if (image_vec[th_count_create - 1].return_filesize() < limit_size) {//さっき出力したファイルのサイズが基準以下ならbreak
-				image_vec_num = th_count_create - 1;
+				image_vec_num = th_count_create;
 				break;
 			}
 		}
 			
 		printf("\033[1K\033[0Gファイルを出力して探索中。進捗%d%%。\n", 100);
+		fflush(stdout);
 		
 		
 
@@ -242,14 +245,20 @@ int main(int argc, char** argv) {
 
 		for (int j = 0; j < image_vec_num; j++) {//条件内でいちばん大きいものを選択してリネーム
 			printf("\033[1K\033[0G条件に合う画像を探索中。進捗%d%%。", (int)(j * 100) / image_notch);
+			fflush(stdout);
 			if (image_vec[j].return_filesize() < limit_size) {
 				image_vec[j].image_rename();
 				printf("\033[1K\033[0G条件に合う画像を探索中。進捗%d%%。\n", 100);
+				fflush(stdout);
 				printf("%d枚目の画像を%3.2fMBで書き出しました。\n", i, (double)image_vec[j].return_filesize() * 2 / (limit_size));
+				fflush(stdout);
+				break;
 			}
 		}
 	}
 	printf("完了しました。ご利用ありがとうございました。\n");
+	fflush(stdout);
+	Sleep(5000);
 }
 
 
