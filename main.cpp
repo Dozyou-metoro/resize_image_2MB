@@ -194,10 +194,17 @@ int main(int argc, char** argv) {
 				if (th_count_create < image_notch) {//リサイズ値がマイナスしないように確認
 					image_vec[th_count_create].out_image_x = in_image_x - (16 * th_count_create);
 					image_vec[th_count_create].out_image_y = in_image_y - (9 * th_count_create);
-					std::thread* p_thread = new std::thread(image_resize, &image_vec[th_count_create]);//スレッド生成
+					try {
+						std::thread* p_thread = new std::thread(image_resize, &image_vec[th_count_create]);//スレッド生成
+						thread_list[th_j] = p_thread;//スレッド情報を記録
+						th_count_create++;
+					}
+					catch (std::bad_alloc) {
+						ERROR_PRINT("MEM_ERROR", -1)
+					}
 					
-					thread_list[th_j]=p_thread;//スレッド情報を記録
-					th_count_create++;
+					
+					
 				}
 				
 			}
