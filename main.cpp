@@ -19,7 +19,6 @@
 
 #include<array>
 #include<vector>
-#include<list>
 #include<thread>
 
 #include"error_macro.h"
@@ -33,6 +32,7 @@ std::array<char, 1024> file_name = {};//入力ファイル名を入れておく
 int file_no = 1;//ファイル番号割り当て用
 
 const int default_bpp = 3;
+const size_t limit_size = 1024 * 1024 * 2;
 
 
 
@@ -109,16 +109,16 @@ public:
 		str_buf = name_buf;
 
 		str_buf[strlen(&str_buf.front()) + 1  - 7] = '\0';//.pngxxxを消す
-		sprintf(&str_buf.front(), "%s_2MB.png", &str_buf.front());
+		sprintf(&str_buf.front(), "%s_2MB.png", &str_buf.front());//_2MB.pngを付けたす
 
 		rename(&name_buf.front(), &str_buf.front());
 	}
 
 	~image_data() {
-		if (out_pixel) {
+		if (out_pixel) {//まだ解放されてないなら解放
 			delete[] out_pixel;
 		}
-		remove(&name_buf.front());
+		remove(&name_buf.front());//一時ファイルを消す
 	}
 };
 
@@ -162,7 +162,7 @@ int main(int argc, char** argv) {
 
 		//ここからメイン処理
 		size_t in_image_size = get_filesize(argv[i]);
-		if (in_image_size < 1024 * 1024 * 2) {//もう2MB以下の物はスキップ
+		if (in_image_size < limit_size) {//もう2MB以下の物はスキップ
 			continue;
 		}
 
@@ -174,6 +174,7 @@ int main(int argc, char** argv) {
 			printf("%d枚目の画像の読み込みに失敗しました。\n", i);
 			continue;
 		}
+		printf("%d枚目の画像を読み込みました。\n", i);
 
 		int core_num = std::thread::hardware_concurrency();
 
@@ -182,13 +183,15 @@ int main(int argc, char** argv) {
 
 		std::vector<image_data> image_vec(image_notch);//サイズを記録しておく配列
 
-		std::vector<std::thread*> thread_list(core_num);
+		std::vector<std::thread*> thread_list(core_num);//スレッド情報を記録する配列
 
 		int th_count_create = 0;//処理枚数カウント(作成側)
 		int th_count_join = 0;//処理枚数カウント(join側)
+		int image_vec_num = 0;//最終的に処理した数
+
 		while (1) {
 			for (int th_j = 0; th_j < core_num; th_j++) {//プロセッサぶんスレッド生成
-				if (th_count_create < image_notch) {
+				if (th_count_create < image_notch) {//リサイズ値がマイナスしないように確認
 					image_vec[th_count_create].out_image_x = in_image_x - (16 * th_count_create);
 					image_vec[th_count_create].out_image_y = in_image_y - (9 * th_count_create);
 					std::thread* p_thread = new std::thread(image_resize, &image_vec[th_count_create]);//スレッド生成
@@ -202,31 +205,42 @@ int main(int argc, char** argv) {
 
 
 
-			for (int th_j = 0; th_j < core_num; th_j++) {
+			for (int th_j = 0; th_j < core_num; th_j++) {//スレッド処理が終わるのを待つ
 				if (th_count_join < image_notch) {
+
+					printf("\033[1K\033[0Gファイルを出力して探索中。進捗%d%", (int)(th_count_join * 100) / image_notch);
+
 					(*thread_list[th_j]).join();
 					th_count_join++;
 				}
 			}
 
-			if (th_count_join >= image_notch) {
+			if (th_count_join >= image_notch) {//最後まで出力したらbreak
+				image_vec_num = image_notch;
+				break;
+			}
+
+			if (image_vec[th_count_create - 1].return_filesize() < limit_size) {//さっき出力したファイルのサイズが基準以下ならbreak
+				image_vec_num = th_count_create - 1;
 				break;
 			}
 		}
 			
+		printf("\033[1K\033[0Gファイルを出力して探索中。進捗%d%\n", 100);
 		
 		
 
 		stbi_image_free(pixel);
 
-		for (int j = 0; j < image_notch; j++) {
-			if (image_vec[j].return_filesize() < 1024 * 1024 * 2) {
+
+		for (int j = 0; j < image_vec_num; j++) {//条件内でいちばん大きいものを選択してリネーム
+			printf("\033[1K\033[0G条件に合う探索中。進捗%d%", (int)(j * 100) / image_notch);
+			if (image_vec[j].return_filesize() < limit_size) {
 				image_vec[j].image_rename();
 			}
 		}
 
-
-
+		printf("\033[1K\033[0G条件に合う探索中。進捗%d%\n", 100);
 
 	}
 }
