@@ -164,6 +164,7 @@ int main(int argc, char** argv) {
 		//ここからメイン処理
 		size_t in_image_size = get_filesize(argv[i]);
 		if (in_image_size < limit_size) {//もう2MB以下の物はスキップ
+			printf("%d枚目の2MB以下の画像をスキップしました。\n", i);
 			continue;
 		}
 
@@ -180,6 +181,8 @@ int main(int argc, char** argv) {
 		int core_num = std::thread::hardware_concurrency();
 
 		int image_notch = in_image_x / 16;
+
+		file_no = 0;//仮ファイル名カウンタカンスト対策
 
 
 		std::vector<image_data> image_vec(image_notch);//サイズを記録しておく配列
