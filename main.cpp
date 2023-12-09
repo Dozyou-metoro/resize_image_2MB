@@ -56,6 +56,7 @@ public:
 
 	void resize(void) {
 		try {//リサイズ先のメモリを確保
+			printf("new_size:%d\n", out_image_x * out_image_y * default_bpp * sizeof(unsigned char));
 			out_pixel = new unsigned char[out_image_x * out_image_y * default_bpp * sizeof(unsigned char)];
 		}
 		catch (std::bad_alloc) {
