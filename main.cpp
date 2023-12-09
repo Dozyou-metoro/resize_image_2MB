@@ -213,16 +213,16 @@ int main(int argc, char** argv) {
 			for (int th_j = 0; th_j < core_num; th_j++) {//スレッド処理が終わるのを待つ
 				if (th_count_join < image_notch) {
 
-					printf("\033[1K\033[0Gファイルを出力して探索中。進捗%d%%。", (int)(th_count_join * 100) / image_notch);
+					printf("\033[1K\033[0Gファイルを出力しておおまかに探索中。進捗%d%%。", (int)(th_count_join * 100) / image_notch);
 					fflush(stdout);
 
 					(*thread_list[th_count_join]).join();
 
 					if ((image_vec[th_count_join].return_filesize() < limit_size) && (limit_clear_no == ~0)) {
 						if (th_count_join == 0) {
-							limit_clear_no = th_count_join;//条件を満たす寸前の場所を記録
+							limit_clear_no = th_count_join;//初期から条件を満たしたときの処理
 						} else {
-							limit_clear_no = th_count_join - (core_num + 1);
+							limit_clear_no = th_count_join - (core_num + 1);//条件を満たす寸前の場所を記録
 						}
 					}
 
@@ -235,13 +235,13 @@ int main(int argc, char** argv) {
 			}
 		}
 
-		printf("\033[1K\033[0Gファイルを出力して探索中。進捗%d%%。\n", 100);
+		printf("\033[1K\033[0Gファイルを出力しておおまかに探索中。進捗%d%%。\n", 100);
 		fflush(stdout);
 
-		th_count_create = limit_clear_no;
-		th_count_join = limit_clear_no;
+		th_count_create = limit_clear_no+1;//未探索エリアを指定
+		th_count_join = limit_clear_no+1;
 
-
+		//ここから二次探索
 		for (int th_j = 0; th_j < core_num; th_j++) {//プロセッサぶんスレッド生成
 			if (th_count_create < image_notch) {//リサイズ値がマイナスしないように確認
 				image_vec[th_count_create].out_image_x = in_image_x - (16 * th_count_create);
@@ -260,7 +260,7 @@ int main(int argc, char** argv) {
 		for (int th_j = 0; th_j < core_num; th_j++) {//スレッド処理が終わるのを待つ
 			if (th_count_join < image_notch) {
 
-				printf("\033[1K\033[0Gファイルを出力して探索中。進捗%d%%。", (int)(th_count_join * 100) / image_notch);
+				printf("\033[1K\033[0Gファイルを出力して詳細に探索中。進捗%d%%。", (int)(th_count_join * 100) / image_notch);
 				fflush(stdout);
 
 				(*thread_list[th_count_join]).join();
@@ -269,7 +269,8 @@ int main(int argc, char** argv) {
 		}
 
 
-
+		printf("\033[1K\033[0Gファイルを出力して詳細に探索中。進捗%d%%。\n", 100);
+		fflush(stdout);
 
 		stbi_image_free(pixel);
 
@@ -286,6 +287,8 @@ int main(int argc, char** argv) {
 				break;
 			}
 		}
+
+
 	}
 	printf("完了しました。ご利用ありがとうございました。\n");
 	fflush(stdout);
