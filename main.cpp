@@ -187,7 +187,7 @@ int main(int argc, char** argv) {
 
 		std::vector<image_data> image_vec(image_notch);//サイズを記録しておく配列
 
-		std::vector<std::thread*> thread_list(image_notch);//スレッド情報を記録する配列
+		std::vector<std::thread*> thread_list(core_num);//スレッド情報を記録する配列
 
 		int th_count_create = 0;//処理枚数カウント(作成側)
 		int th_count_join = 0;//処理枚数カウント(join側)
@@ -201,12 +201,14 @@ int main(int argc, char** argv) {
 					image_vec[th_count_create].out_image_y = in_image_y - (9 * th_count_create);
 					try {
 						std::thread* p_thread = new std::thread(image_resize, &image_vec[th_count_create]);//スレッド生成
-						thread_list[th_count_create] = p_thread;//スレッド情報を記録
+						thread_list[th_j] = p_thread;//スレッド情報を記録
 						th_count_create = th_count_create + core_num + 1;//プロセッサ数分開けて探索
 					}
 					catch (std::bad_alloc) {
 						ERROR_PRINT("MEM_ERROR", -1)
 					}
+
+					
 				}
 			}
 
@@ -218,7 +220,7 @@ int main(int argc, char** argv) {
 
 					(*thread_list[th_count_join]).join();
 
-					if ((image_vec[th_count_join].return_filesize() < limit_size) && (limit_clear_no == ~0)) {
+					if ((image_vec[th_j].return_filesize() < limit_size) && (limit_clear_no == ~0)) {
 						if (th_count_join == 0) {
 							limit_clear_no = th_count_join;//初期から条件を満たしたときの処理
 						} else {
