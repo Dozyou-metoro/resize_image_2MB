@@ -42,7 +42,7 @@ public:
 	//リサイズ先画像関係
 	int out_image_x = 0;
 	int out_image_y = 0;
-	
+
 private:
 	//リサイズ先画像関係
 	unsigned char* out_pixel = nullptr;
@@ -56,7 +56,7 @@ public:
 
 	void resize(void) {
 		try {//リサイズ先のメモリを確保
-			out_pixel = new unsigned char[out_image_x * out_image_y * default_bpp * sizeof(unsigned char)];
+			out_pixel = new unsigned char[4000 * 1170 * default_bpp * sizeof(unsigned char)];
 		}
 		catch (std::bad_alloc) {
 			ERROR_PRINT("MEM_ERROR", -1)
@@ -89,13 +89,13 @@ public:
 
 		fclose(fp);
 	}
-	
+
 	_inline size_t return_filesize(void) {//file_sizeを読みだし専用にする関数
 		return file_size;
 	}
 
 	_inline int set_fileno(int no) {//file_noを一度だけ書き込みする関数
-		if ((no > 0)&&(image_no==0)) {
+		if ((no > 0) && (image_no == 0)) {
 			image_no = no;
 			return 0;
 		} else {
@@ -108,7 +108,7 @@ public:
 
 		str_buf = name_buf;
 
-		str_buf[strlen(&str_buf.front()) + 1  - 7] = '\0';//.pngxxxを消す
+		str_buf[strlen(&str_buf.front()) + 1 - 7] = '\0';//.pngxxxを消す
 		sprintf(&str_buf.front(), "%s_2MB.png", &str_buf.front());//_2MB.pngを付けたす
 
 		rename(&name_buf.front(), &str_buf.front());
@@ -180,7 +180,10 @@ int main(int argc, char** argv) {
 
 		int core_num = std::thread::hardware_concurrency();
 
-		int image_notch = in_image_x / 16;
+		int image_notch = in_image_x / 16;//小さい方に合わせる
+		if (image_notch > (in_image_y / 9)) {
+			image_notch = in_image_y / 9;
+		}
 
 		file_no = 0;//仮ファイル名カウンタカンスト対策
 
@@ -192,61 +195,98 @@ int main(int argc, char** argv) {
 		int th_count_create = 0;//処理枚数カウント(作成側)
 		int th_count_join = 0;//処理枚数カウント(join側)
 		int image_vec_num = 0;//最終的に処理した数
+		int limit_clear_no = ~0;//基準を満たした配列の番号
 
-		while (1) {
+		while (1) {//一次探索
 			for (int th_j = 0; th_j < core_num; th_j++) {//プロセッサぶんスレッド生成
 				if (th_count_create < image_notch) {//リサイズ値がマイナスしないように確認
-					image_vec[th_count_create].out_image_x = in_image_x - (16 * th_count_create);
-					image_vec[th_count_create].out_image_y = in_image_y - (9 * th_count_create);
-					try {
-						std::thread* p_thread = new std::thread(image_resize, &image_vec[th_count_create]);//スレッド生成
-						thread_list[th_j] = p_thread;//スレッド情報を記録
-						th_count_create++;
+					if ((in_image_x - (16 * th_count_create) > 0) && (in_image_y - (9 * th_count_create) > 0)) {
+						image_vec[th_count_create].out_image_x = in_image_x - (16 * th_count_create);//インスタンスに情報を詰める
+						image_vec[th_count_create].out_image_y = in_image_y - (9 * th_count_create);
+						try {
+							std::thread* p_thread = new std::thread(image_resize, &image_vec[th_count_create]);//スレッド生成
+							thread_list[th_j] = p_thread;//スレッド情報を記録
+							th_count_create = th_count_create + core_num + 1;//プロセッサ数分開けて探索
+						}
+						catch (std::bad_alloc) {
+							ERROR_PRINT("MEM_ERROR", -1)
+						}
 					}
-					catch (std::bad_alloc) {
-						ERROR_PRINT("MEM_ERROR", -1)
-					}
-					
-					
-					
 				}
-				
 			}
-			
-
-
 
 			for (int th_j = 0; th_j < core_num; th_j++) {//スレッド処理が終わるのを待つ
 				if (th_count_join < image_notch) {
+					if ((in_image_x - (16 * th_count_join) > 0) && (in_image_y - (9 * th_count_join) > 0)) {
+						printf("\033[1K\033[0Gファイルを出力しておおまかに探索中。進捗%d%%。", (int)(th_count_join * 100) / image_notch);
+						fflush(stdout);
 
-					printf("\033[1K\033[0Gファイルを出力して探索中。進捗%d%%。", (int)(th_count_join * 100) / image_notch);
-					fflush(stdout);
+						(*thread_list[th_j]).join();
 
-					(*thread_list[th_j]).join();
-					th_count_join++;
+						if ((image_vec[th_count_join].return_filesize() < limit_size) && (limit_clear_no == ~0)) {//条件を満たしたかを確認
+							if (th_count_join == 0) {
+								limit_clear_no = th_count_join;//初期から条件を満たしたときの処理
+							} else {
+								limit_clear_no = th_count_join - (core_num + 1);//条件を満たす寸前の場所を記録
+							}
+						}
+
+						th_count_join = th_count_join + core_num + 1;
+					}
+
+					
 				}
 			}
 
-			if (th_count_join >= image_notch) {//最後まで出力したらbreak
-				image_vec_num = image_notch;
-				break;
-			}
-
-			if (image_vec[th_count_create - 1].return_filesize() < limit_size) {//さっき出力したファイルのサイズが基準以下ならbreak
-				image_vec_num = th_count_create;
+			if (limit_clear_no < 0xffffffff) {//変数が書き換えられていたらbreak;
 				break;
 			}
 		}
-			
-		printf("\033[1K\033[0Gファイルを出力して探索中。進捗%d%%。\n", 100);
+
+		printf("\033[1K\033[0Gファイルを出力しておおまかに探索中。進捗%d%%。\n", 100);
 		fflush(stdout);
-		
-		
+
+		th_count_create = limit_clear_no + 1;//未探索エリアを指定
+		th_count_join = limit_clear_no + 1;
+
+		//ここから二次探索(条件を満たすものがある場所の空白を埋めていく)
+		for (int th_j = 0; th_j < core_num; th_j++) {//プロセッサぶんスレッド生成
+			if (th_count_create < image_notch) {//リサイズ値がマイナスしないように確認
+				if ((in_image_x - (16 * th_count_create) > 0) && (in_image_y - (9 * th_count_create) > 0)) {
+					image_vec[th_count_create].out_image_x = in_image_x - (16 * th_count_create);
+				image_vec[th_count_create].out_image_y = in_image_y - (9 * th_count_create);
+				try {
+					std::thread* p_thread = new std::thread(image_resize, &image_vec[th_count_create]);//スレッド生成
+					thread_list[th_j] = p_thread;//スレッド情報を記録
+					th_count_create++;
+				}
+				catch (std::bad_alloc) {
+					ERROR_PRINT("MEM_ERROR", -1)
+				}
+				}
+				
+			}
+		}
+
+		for (int th_j = 0; th_j < core_num; th_j++) {//スレッド処理が終わるのを待つ
+			if (th_count_join < image_notch) {
+
+				printf("\033[1K\033[0Gファイルを出力して詳細に探索中。進捗%d%%。", (int)(th_count_join * 100) / image_notch);
+				fflush(stdout);
+
+				(*thread_list[th_j]).join();
+				th_count_join++;
+			}
+		}
+
+
+		printf("\033[1K\033[0Gファイルを出力して詳細に探索中。進捗%d%%。\n", 100);
+		fflush(stdout);
 
 		stbi_image_free(pixel);
 
 
-		for (int j = 0; j < image_vec_num; j++) {//条件内でいちばん大きいものを選択してリネーム
+		for (int j = limit_clear_no; j < limit_clear_no + core_num + 1; j++) {//条件内でいちばん大きいものを選択してリネーム
 			printf("\033[1K\033[0G条件に合う画像を探索中。進捗%d%%。", (int)(j * 100) / image_notch);
 			fflush(stdout);
 			if (image_vec[j].return_filesize() < limit_size) {
@@ -258,6 +298,8 @@ int main(int argc, char** argv) {
 				break;
 			}
 		}
+
+
 	}
 	printf("完了しました。ご利用ありがとうございました。\n");
 	fflush(stdout);
