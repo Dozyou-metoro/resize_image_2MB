@@ -180,7 +180,7 @@ int main(int argc, char** argv) {
 
 		int core_num = std::thread::hardware_concurrency();
 
-		int image_notch = in_image_x / 16;
+		int image_notch = in_image_x / 16;//小さい方に合わせる
 		if (image_notch > (in_image_y / 9)) {
 			image_notch = in_image_y / 9;
 		}
@@ -201,7 +201,7 @@ int main(int argc, char** argv) {
 			for (int th_j = 0; th_j < core_num; th_j++) {//プロセッサぶんスレッド生成
 				if (th_count_create < image_notch) {//リサイズ値がマイナスしないように確認
 					if ((in_image_x - (16 * th_count_create) > 0) && (in_image_y - (9 * th_count_create) > 0)) {
-						image_vec[th_count_create].out_image_x = in_image_x - (16 * th_count_create);
+						image_vec[th_count_create].out_image_x = in_image_x - (16 * th_count_create);//インスタンスに情報を詰める
 						image_vec[th_count_create].out_image_y = in_image_y - (9 * th_count_create);
 						try {
 							std::thread* p_thread = new std::thread(image_resize, &image_vec[th_count_create]);//スレッド生成
@@ -223,7 +223,7 @@ int main(int argc, char** argv) {
 
 						(*thread_list[th_j]).join();
 
-						if ((image_vec[th_count_join].return_filesize() < limit_size) && (limit_clear_no == ~0)) {
+						if ((image_vec[th_count_join].return_filesize() < limit_size) && (limit_clear_no == ~0)) {//条件を満たしたかを確認
 							if (th_count_join == 0) {
 								limit_clear_no = th_count_join;//初期から条件を満たしたときの処理
 							} else {
@@ -238,7 +238,7 @@ int main(int argc, char** argv) {
 				}
 			}
 
-			if (limit_clear_no < 0xffffffff) {
+			if (limit_clear_no < 0xffffffff) {//変数が書き換えられていたらbreak;
 				break;
 			}
 		}
@@ -249,7 +249,7 @@ int main(int argc, char** argv) {
 		th_count_create = limit_clear_no + 1;//未探索エリアを指定
 		th_count_join = limit_clear_no + 1;
 
-		//ここから二次探索
+		//ここから二次探索(条件を満たすものがある場所の空白を埋めていく)
 		for (int th_j = 0; th_j < core_num; th_j++) {//プロセッサぶんスレッド生成
 			if (th_count_create < image_notch) {//リサイズ値がマイナスしないように確認
 				if ((in_image_x - (16 * th_count_create) > 0) && (in_image_y - (9 * th_count_create) > 0)) {
@@ -274,7 +274,7 @@ int main(int argc, char** argv) {
 				printf("\033[1K\033[0Gファイルを出力して詳細に探索中。進捗%d%%。", (int)(th_count_join * 100) / image_notch);
 				fflush(stdout);
 
-				(*thread_list[th_j]).join();//TODO:この辺再検討すること
+				(*thread_list[th_j]).join();
 				th_count_join++;
 			}
 		}
